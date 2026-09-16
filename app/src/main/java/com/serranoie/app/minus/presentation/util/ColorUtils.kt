@@ -109,8 +109,8 @@ private fun corePaletteFor(color: Color, dark: Boolean): HarmonizedColorPalette 
     val accent = CorePalette.of(color.toArgb())
     return if (dark) {
         HarmonizedColorPalette(
-            main = Color(accent.a1.tone(40)),
-            onMain = Color(content.a1.tone(30)),
+            main = Color(accent.a1.tone(50)),
+            onMain = Color(content.a1.tone(40)),
             container = Color(accent.a1.tone(30)),
             onContainer = Color(content.a1.tone(90)),
             surface = Color(accent.n1.tone(10)),
@@ -120,8 +120,8 @@ private fun corePaletteFor(color: Color, dark: Boolean): HarmonizedColorPalette 
         )
     } else {
         HarmonizedColorPalette(
-            main = Color(accent.seed.toInt()),
-            onMain = Color(content.a1.tone(10)),
+            main = Color(accent.a1.tone(60)),
+            onMain = Color(content.a1.tone(20)),
             container = Color(accent.a1.tone(90)),
             onContainer = Color(content.a1.tone(10)),
             surface = Color(accent.n1.tone(99)),

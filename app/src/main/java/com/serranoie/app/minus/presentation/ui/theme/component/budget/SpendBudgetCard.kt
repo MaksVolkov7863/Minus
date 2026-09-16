@@ -2,6 +2,7 @@ package com.serranoie.app.minus.presentation.ui.theme.component.budget
 
 import android.content.Context
 import android.content.res.Configuration
+import android.util.Log
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -65,7 +66,7 @@ private fun DrawScope.drawWavyPattern(
     amplitudePx: Float = 8f,
 ) {
     if (size.height <= 0f || size.width <= 0f) {
-        android.util.Log.w("drawWavyPattern", "skipping draw: invalid size $size")
+        Log.w("drawWavyPattern", "skipping draw: invalid size $size")
         return
     }
 
