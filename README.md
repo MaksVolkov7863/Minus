@@ -2,7 +2,7 @@
   <img src="assets/banner.png" alt="App Banner" width="100%">
 </p>
 
-# Minus - An easy to use, budget tracking app
+# Minus - Your money, minus the guesswork
 
 <p align="center">
   <strong>Minus</strong> is an easy to use & powerful budget tracking app. <br/>Register, calculate and make reminders for your recurring expenses alongside credit card due dates.
@@ -20,6 +20,10 @@
   </h4>
 </div>
 
+<div align="center">
+  <h4> Learn about the app, functionality and behaviour on the <a href="https://github.com/isaacsa51/Minus/wiki">wiki</a> </h4>
+</div>
+  
 <table align="center">
   <tr>
     <td align="center">
@@ -42,7 +46,6 @@
 
 <p align="center">
   <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Android/android2.svg">
-  <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/AndroidStudio/androidstudio3.svg">
   <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Kotlin/kotlin1.svg">
   <img src="https://m3-markdown-badges.vercel.app/stars/1/3/isaacsa51/Minus">
   <img src="https://m3-markdown-badges.vercel.app/issues/1/2/isaacsa51/Minus">
