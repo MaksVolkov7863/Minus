@@ -11,6 +11,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.serranoie.app.minus.R
 import com.serranoie.app.minus.presentation.ui.theme.MinusTheme
 import com.serranoie.app.minus.presentation.ui.theme.labelMediumCondensed
+import com.serranoie.app.minus.presentation.util.censor
 import java.math.BigDecimal
 import java.text.NumberFormat
 
@@ -34,6 +35,7 @@ fun DayTotalItem(
         }
 
         Text(
+            modifier = Modifier.censor(),
             text = if (showLabel) {
                 stringResource(R.string.day_total_format, formattedValue)
             } else {

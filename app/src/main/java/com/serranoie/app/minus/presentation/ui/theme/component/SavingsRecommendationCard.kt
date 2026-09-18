@@ -7,15 +7,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.HorizontalDivider
@@ -41,6 +38,7 @@ import com.serranoie.app.minus.presentation.ui.theme.MinusTheme
 import com.serranoie.app.minus.presentation.ui.theme.bodyMediumCondensed
 import com.serranoie.app.minus.presentation.ui.theme.bodySmallCondensed
 import com.serranoie.app.minus.presentation.ui.theme.labelSmallCondensed
+import com.serranoie.app.minus.presentation.util.censor
 import com.serranoie.app.minus.presentation.util.font.format.formatCurrencySymbolOnly
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -190,6 +188,7 @@ fun SavingsRecommendationCard(
                 verticalAlignment = Alignment.Top
             ) {
                 Text(
+                    modifier = Modifier.censor(),
                     text = stringResource(
                         R.string.savings_recommendation_available_format,
                         formatCurrencySymbolOnly(savings, currency)
@@ -200,6 +199,7 @@ fun SavingsRecommendationCard(
                 Column(horizontalAlignment = Alignment.End) {
                     val idealLabel = projectedPerPeriod ?: idealSavingsPerPeriod
                     Text(
+                        modifier = Modifier.censor(),
                         text = stringResource(
                             R.string.savings_recommendation_ideal_savings_format,
                             formatCurrencySymbolOnly(idealLabel, currency)
@@ -316,6 +316,7 @@ private fun RecommendationItem(
             )
         }
         Text(
+            modifier = Modifier.censor(),
             text = "$value ($percentage%)",
             style = MaterialTheme.typography.bodyMediumCondensed,
             fontWeight = FontWeight.Bold,

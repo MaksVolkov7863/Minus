@@ -22,64 +22,70 @@ import androidx.compose.ui.unit.dp
 import com.serranoie.app.minus.presentation.ui.theme.MinusTheme
 import com.serranoie.app.minus.presentation.ui.theme.bodyMediumCondensed
 import com.serranoie.app.minus.presentation.util.HarmonizedColorPalette
+import com.serranoie.app.minus.presentation.util.censor
 import com.serranoie.app.minus.presentation.util.font.format.numberFormat
 import java.math.BigDecimal
 
 @Composable
 fun CategoryAmount(
-	value: String,
-	modifier: Modifier = Modifier,
-	amount: BigDecimal = BigDecimal.ZERO,
-	isSpecial: Boolean = false,
-	palette: HarmonizedColorPalette? = null,
-	currency: String = "MXN",
-	selected: Boolean = false,
-	onClick: (() -> Unit)? = null
+    value: String,
+    modifier: Modifier = Modifier,
+    amount: BigDecimal = BigDecimal.ZERO,
+    isSpecial: Boolean = false,
+    palette: HarmonizedColorPalette? = null,
+    currency: String = "MXN",
+    selected: Boolean = false,
+    onClick: (() -> Unit)? = null
 ) {
-	val context = LocalContext.current
+    val context = LocalContext.current
 
-	Surface(
-		shape = CircleShape,
-		color = if (selected) palette?.main ?: MaterialTheme.colorScheme.primary else palette?.main?.copy(alpha = 0.2f) ?: MaterialTheme.colorScheme.surface,
-		contentColor = if (selected) palette?.onSurface ?: MaterialTheme.colorScheme.onPrimary else palette?.main ?: MaterialTheme.colorScheme.onSurface,
-		modifier = modifier.then(Modifier.testTag("CategoryAmount_$value")),
-		border = if (selected) null else BorderStroke(1.dp, palette?.main ?: Color.Transparent),
-		onClick = onClick ?: {},
-	) {
-		Row(
-			modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-			verticalAlignment = Alignment.CenterVertically,
-		) {
-			Text(
-				text = value,
-				softWrap = false,
-				overflow = TextOverflow.Ellipsis,
-				style = MaterialTheme.typography.bodyMediumCondensed.copy(
-					fontStyle = if (isSpecial) FontStyle.Italic else FontStyle.Normal,
-				),
-			)
-			Spacer(modifier = Modifier.width(8.dp))
-			Text(
-				text = numberFormat(
-					context = context,
-					value = amount,
-					currency = currency,
-				),
-				softWrap = false,
-				style = MaterialTheme.typography.bodyMediumCondensed,
-			)
-		}
-	}
+    Surface(
+        shape = CircleShape,
+        color = if (selected) palette?.main
+            ?: MaterialTheme.colorScheme.primary else palette?.main?.copy(alpha = 0.2f)
+            ?: MaterialTheme.colorScheme.surface,
+        contentColor = if (selected) palette?.onSurface
+            ?: MaterialTheme.colorScheme.onPrimary else palette?.main
+            ?: MaterialTheme.colorScheme.onSurface,
+        modifier = modifier.then(Modifier.testTag("CategoryAmount_$value")),
+        border = if (selected) null else BorderStroke(1.dp, palette?.main ?: Color.Transparent),
+        onClick = onClick ?: {},
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = value,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMediumCondensed.copy(
+                    fontStyle = if (isSpecial) FontStyle.Italic else FontStyle.Normal,
+                ),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                modifier = Modifier.censor(),
+                text = numberFormat(
+                    context = context,
+                    value = amount,
+                    currency = currency,
+                ),
+                softWrap = false,
+                style = MaterialTheme.typography.bodyMediumCondensed,
+            )
+        }
+    }
 
 }
 
 @Preview(name = "CategoryAmount")
 @Composable
 private fun PreviewCategoryAmount() {
-	MinusTheme {
-		CategoryAmount(
-			value = "Comida",
-			amount = BigDecimal(100),
-		)
-	}
+    MinusTheme {
+        CategoryAmount(
+            value = "Comida",
+            amount = BigDecimal(100),
+        )
+    }
 }

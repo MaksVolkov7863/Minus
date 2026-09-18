@@ -22,6 +22,7 @@ import com.serranoie.app.minus.R
 import com.serranoie.app.minus.presentation.ui.theme.MinusTheme
 import com.serranoie.app.minus.presentation.ui.theme.bodyMediumCondensed
 import com.serranoie.app.minus.presentation.ui.theme.labelMediumCondensed
+import com.serranoie.app.minus.presentation.util.censor
 import java.math.BigDecimal
 import java.text.NumberFormat
 
@@ -52,6 +53,7 @@ internal fun SubscriptionsHeroCard(
             )
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
+                    modifier = Modifier.censor(),
                     text = currencyFormatted,
                     style = MaterialTheme.typography.headlineSmallEmphasized,
                     fontWeight = FontWeight.Bold,

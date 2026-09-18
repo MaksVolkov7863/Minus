@@ -34,6 +34,7 @@ import com.serranoie.app.minus.domain.model.Transaction
 import com.serranoie.app.minus.presentation.ui.theme.MinusTheme
 import com.serranoie.app.minus.presentation.ui.theme.component.expense.subscriptionPalette
 import com.serranoie.app.minus.presentation.ui.theme.labelSmallCondensed
+import com.serranoie.app.minus.presentation.util.censor
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.time.LocalDate
@@ -113,6 +114,7 @@ internal fun SubscriptionsCategoryGraph(
                     verticalArrangement = Arrangement.Bottom,
                 ) {
                     Text(
+                        modifier = Modifier.censor(),
                         text = currencyFormat.format(bar.amount),
                         style = MaterialTheme.typography.labelSmallCondensed,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

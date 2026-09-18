@@ -45,6 +45,7 @@ import com.serranoie.app.minus.presentation.ui.theme.component.expense.Subscript
 import com.serranoie.app.minus.presentation.ui.theme.component.expense.UpcomingRecurrentItem
 import com.serranoie.app.minus.presentation.ui.theme.isNightMode
 import com.serranoie.app.minus.presentation.ui.theme.titleMediumCondensed
+import com.serranoie.app.minus.presentation.util.censor
 import com.serranoie.app.minus.presentation.util.haptic.HapticUtil.performUIHaptic
 import java.math.BigDecimal
 import java.text.NumberFormat
@@ -127,6 +128,7 @@ internal fun SubscriptionItem(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
+                    modifier = Modifier.censor(),
                     text = currencyFormat.format(transaction.amount),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

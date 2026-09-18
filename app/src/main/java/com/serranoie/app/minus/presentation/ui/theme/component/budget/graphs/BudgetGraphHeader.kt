@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import com.serranoie.app.minus.R
 import com.serranoie.app.minus.domain.model.SupportedCurrency
 import com.serranoie.app.minus.presentation.ui.theme.MinusTheme
+import com.serranoie.app.minus.presentation.util.censor
 import com.serranoie.app.minus.presentation.util.font.format.symbolOnlyCurrencyFormat
 import java.math.BigDecimal
 import java.text.Format
@@ -47,6 +48,7 @@ internal fun BudgetGraphHeader(
             }
             if (!symbolAtEnd) symbolText()
             Text(
+                modifier = Modifier.censor(),
                 text = amountOnly,
                 style = MaterialTheme.typography.displaySmallEmphasized,
                 fontSize = 28.sp,

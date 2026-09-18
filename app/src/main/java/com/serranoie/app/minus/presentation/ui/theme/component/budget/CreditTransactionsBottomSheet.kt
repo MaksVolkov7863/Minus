@@ -51,6 +51,7 @@ import com.serranoie.app.minus.presentation.ui.editor.dialogs.CreditCutoffDayDia
 import com.serranoie.app.minus.presentation.ui.theme.MinusTheme
 import com.serranoie.app.minus.presentation.ui.theme.labelLargeCondensed
 import com.serranoie.app.minus.presentation.ui.theme.titleMediumCondensed
+import com.serranoie.app.minus.presentation.util.censor
 import com.serranoie.app.minus.presentation.util.font.format.prettyDate
 import com.serranoie.app.minus.presentation.util.font.format.symbolOnlyCurrencyFormat
 import java.math.BigDecimal
@@ -125,6 +126,7 @@ fun CreditTransactionsBottomSheet(
                         )
                     }
                     Text(
+                        modifier = Modifier.censor(),
                         text = currencyFormat.format(tx.amount),
                         style = MaterialTheme.typography.titleSmallEmphasized,
                         fontWeight = FontWeight.Bold
@@ -136,7 +138,6 @@ fun CreditTransactionsBottomSheet(
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = stringResource(R.string.mark_as_paid),
-                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -200,8 +201,8 @@ fun CreditCardVisualization(
             .padding(18.dp)
     ) {
         Text(
-            text = "Credit Card",
-            style = MaterialTheme.typography.displayLargeEmphasized,
+            text = "CREDIT CARD",
+            style = MaterialTheme.typography.displayMediumEmphasized,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onTertiaryContainer,
             modifier = Modifier
@@ -209,7 +210,7 @@ fun CreditCardVisualization(
                 .alpha(0.05f),
             textAlign = TextAlign.Center,
             softWrap = true,
-            lineHeight = 64.sp
+            lineHeight = 48.sp
         )
 
         Surface(
@@ -239,6 +240,7 @@ fun CreditCardVisualization(
                 color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
             )
             Text(
+                modifier = Modifier.censor(),
                 text = currencyFormat.format(totalOwed),
                 style = MaterialTheme.typography.headlineLargeEmphasized,
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -260,7 +262,7 @@ fun CreditCardVisualization(
 
         IconButton(
             onClick = onEditClick,
-            modifier = Modifier.align(Alignment.BottomEnd)
+            modifier = Modifier.align(Alignment.TopEnd)
         ) {
             Icon(
                 imageVector = Icons.Default.Edit,

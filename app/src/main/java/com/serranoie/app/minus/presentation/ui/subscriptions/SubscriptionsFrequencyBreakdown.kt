@@ -32,6 +32,7 @@ import com.serranoie.app.minus.presentation.ui.theme.component.LinearSavingBar
 import com.serranoie.app.minus.presentation.ui.theme.component.expense.subscriptionPalette
 import com.serranoie.app.minus.presentation.ui.theme.labelMediumCondensed
 import com.serranoie.app.minus.presentation.ui.theme.labelSmallCondensed
+import com.serranoie.app.minus.presentation.util.censor
 import java.math.BigDecimal
 import java.text.NumberFormat
 
@@ -97,6 +98,7 @@ internal fun SubscriptionsFrequencyBreakdown(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
+                                modifier = Modifier.censor(),
                                 text = currencyFormat.format(amount),
                                 style = MaterialTheme.typography.labelMediumCondensed,
                                 fontWeight = FontWeight.SemiBold,
