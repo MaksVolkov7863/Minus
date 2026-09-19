@@ -1,3 +1,4 @@
+require "tmpdir"
 default_platform(:android)
 
 platform :android do
@@ -197,11 +198,23 @@ platform :android do
     # Create the Release if missing; otherwise refresh its assets. Either path
     # leaves the tagged release carrying all three signed APKs, and CI re-runs
     # stay idempotent.
+    header_url = "https://raw.githubusercontent.com/#{repo}/#{version_tag}/assets/minus-header-update.png"
+    notes_file = File.join(Dir.tmpdir, "minus-release-notes-#{version_tag}.md")
+    File.write(notes_file, <<~MD)
+      <img src="#{header_url}" width="240">
+
+      ## What's new
+
+      #{File.read(expected_txt).strip}
+
+    MD
+
     begin
       sh(
         "gh", "release", "create", version_tag, *apk_paths,
         "--repo", repo,
         "--title", "Minus #{version_tag}",
+        "--notes-file", notes_file,
         "--generate-notes"
       )
     rescue => e
