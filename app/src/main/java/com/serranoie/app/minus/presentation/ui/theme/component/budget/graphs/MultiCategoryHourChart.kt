@@ -2,6 +2,7 @@ package com.serranoie.app.minus.presentation.ui.theme.component.budget.graphs
 
 import android.content.res.Configuration
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -15,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -112,6 +114,16 @@ internal fun MultiCategoryHourChart(
         color = Color.White,
         fontWeight = FontWeight.Bold,
     )
+
+    var animateIn by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { animateIn = true }
+    val loadProgresses = List(24) { index ->
+        animateFloatAsState(
+            targetValue = if (animateIn) 1f else 0f,
+            animationSpec = tween(durationMillis = 450, delayMillis = index * 30),
+            label = "barFillUp"
+        )
+    }
 
     val transitionState = rememberCategoryHourTransitionState(entries, date)
 
@@ -214,6 +226,7 @@ internal fun MultiCategoryHourChart(
                     drawableHeight = drawableHeight,
                     maxVal = oldMaxVal,
                     alpha = oldAlpha,
+                    loadProgresses = loadProgresses,
                 )
             }
         }
@@ -244,6 +257,7 @@ internal fun MultiCategoryHourChart(
                     drawableHeight = drawableHeight,
                     maxVal = renderMaxVal,
                     alpha = newAlpha,
+                    loadProgresses = loadProgresses,
                 )
             }
         }
@@ -290,6 +304,7 @@ private fun DrawScope.drawCategoryHourBars(
     drawableHeight: Float,
     maxVal: Float,
     alpha: Float,
+    loadProgresses: List<State<Float>>,
 ) {
     for (hour in 0 until 24) {
         val hourEntries = entriesByHour[hour].orEmpty()
@@ -297,9 +312,11 @@ private fun DrawScope.drawCategoryHourBars(
 
         val x = leftMargin + hour * stepWidth
         var segmentBottom = baseline
+        val hourProgress = loadProgresses.getOrNull(hour)?.value ?: 1f
+        
         hourEntries.forEach { entry ->
             val segmentHeight =
-                (entry.amount.toFloat() / maxVal * drawableHeight).coerceAtLeast(1f)
+                (entry.amount.toFloat() / maxVal * drawableHeight * hourProgress).coerceAtLeast(1f)
             val segmentTop = segmentBottom - segmentHeight
             val cornerRadiusPx =
                 maxSegmentCornerRadius.coerceAtMost(minOf(barWidth, segmentHeight) / 2f)

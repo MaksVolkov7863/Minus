@@ -2,6 +2,7 @@ package com.serranoie.app.minus.presentation.ui.theme.component.budget.graphs
 
 import android.content.res.Configuration
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -15,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -27,7 +29,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextMeasurer
@@ -221,6 +222,16 @@ internal fun MultiCategoryChart(
     val thousandsUnit = stringResource(R.string.unit_thousands)
     val millionsUnit = stringResource(R.string.unit_millions)
 
+    var animateIn by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { animateIn = true }
+    val loadProgresses = List(dataSize) { index ->
+        animateFloatAsState(
+            targetValue = if (animateIn) 1f else 0f,
+            animationSpec = tween(durationMillis = 450, delayMillis = index * 30),
+            label = "barFillUp"
+        )
+    }
+
     val dashEffect = remember { PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f) }
     val drawParams =
         remember(tertiaryColor, secondaryColor, surfaceColor, gridColor, dashEffect, labelStyle) {
@@ -339,9 +350,6 @@ internal fun MultiCategoryChart(
 
         val oldAlpha = (1f - progress).coerceIn(0f, 1f)
         val newAlpha = progress.coerceIn(0f, 1f)
-        val slideDirection = transitionState.direction.toFloat()
-        val oldOffsetX = -width * slideDirection * progress
-        val newOffsetX = width * slideDirection * (1f - progress)
 
         if (oldAlpha > 0f && progress < 1f) {
             drawCoordinateSystem(
@@ -358,26 +366,25 @@ internal fun MultiCategoryChart(
                 thousandsUnit = thousandsUnit,
                 millionsUnit = millionsUnit,
             )
-            translate(left = oldOffsetX) {
-                drawCategoryBars(
-                    entriesByDayIndex = oldEntriesByDayIndex,
-                    startLocalDate = startLocalDate,
-                    windowStartIndex = transitionState.oldWindowIndex * transitionState.oldScrollStep,
-                    dataSize = transitionState.oldDataSize,
-                    leftMargin = leftMargin,
-                    baseline = baseline,
-                    topPadding = topPadding,
-                    stepWidth = stepWidth,
-                    barWidth = barWidth,
-                    segmentGap = segmentGap,
-                    maxSegmentCornerRadius = maxSegmentCornerRadius,
-                    drawableHeight = drawableHeight,
-                    maxVal = oldMaxVal,
-                    alpha = oldAlpha,
-                    selectedDate = null,
-                    tertiaryColor = tertiaryColor,
-                )
-            }
+            drawCategoryBars(
+                entriesByDayIndex = oldEntriesByDayIndex,
+                startLocalDate = startLocalDate,
+                windowStartIndex = transitionState.oldWindowIndex * transitionState.oldScrollStep,
+                dataSize = transitionState.oldDataSize,
+                leftMargin = leftMargin,
+                baseline = baseline,
+                topPadding = topPadding,
+                stepWidth = stepWidth,
+                barWidth = barWidth,
+                segmentGap = segmentGap,
+                maxSegmentCornerRadius = maxSegmentCornerRadius,
+                drawableHeight = drawableHeight,
+                maxVal = oldMaxVal,
+                alpha = oldAlpha,
+                selectedDate = null,
+                tertiaryColor = tertiaryColor,
+                loadProgresses = loadProgresses,
+            )
         }
 
         if (newAlpha > 0f) {
@@ -396,26 +403,25 @@ internal fun MultiCategoryChart(
                 millionsUnit = millionsUnit,
                 isTodayHighlighted = true,
             )
-            translate(left = newOffsetX) {
-                drawCategoryBars(
-                    entriesByDayIndex = renderEntriesByDayIndex,
-                    startLocalDate = startLocalDate,
-                    windowStartIndex = transitionState.renderWindowIndex * transitionState.renderScrollStep,
-                    dataSize = transitionState.renderDataSize,
-                    leftMargin = leftMargin,
-                    baseline = baseline,
-                    topPadding = topPadding,
-                    stepWidth = stepWidth,
-                    barWidth = barWidth,
-                    segmentGap = segmentGap,
-                    maxSegmentCornerRadius = maxSegmentCornerRadius,
-                    drawableHeight = drawableHeight,
-                    maxVal = renderMaxVal,
-                    alpha = newAlpha,
-                    selectedDate = selectedDate,
-                    tertiaryColor = tertiaryColor,
-                )
-            }
+            drawCategoryBars(
+                entriesByDayIndex = renderEntriesByDayIndex,
+                startLocalDate = startLocalDate,
+                windowStartIndex = transitionState.renderWindowIndex * transitionState.renderScrollStep,
+                dataSize = transitionState.renderDataSize,
+                leftMargin = leftMargin,
+                baseline = baseline,
+                topPadding = topPadding,
+                stepWidth = stepWidth,
+                barWidth = barWidth,
+                segmentGap = segmentGap,
+                maxSegmentCornerRadius = maxSegmentCornerRadius,
+                drawableHeight = drawableHeight,
+                maxVal = renderMaxVal,
+                alpha = newAlpha,
+                selectedDate = selectedDate,
+                tertiaryColor = tertiaryColor,
+                loadProgresses = loadProgresses,
+            )
         }
 
         if (progress >= 1f) {
@@ -472,6 +478,7 @@ private fun DrawScope.drawCategoryBars(
     alpha: Float,
     selectedDate: LocalDate?,
     tertiaryColor: Color,
+    loadProgresses: List<State<Float>>,
 ) {
     for (index in 0 until dataSize) {
         val dayEntries = entriesByDayIndex[index].orEmpty()
@@ -479,6 +486,7 @@ private fun DrawScope.drawCategoryBars(
 
         val x = leftMargin + index * stepWidth
         val date = startLocalDate.plusDays((windowStartIndex + index).toLong())
+        val dayProgress = loadProgresses.getOrNull(index)?.value ?: 1f
 
         if (date == selectedDate) {
             drawRoundRect(
@@ -492,7 +500,7 @@ private fun DrawScope.drawCategoryBars(
         var segmentBottom = baseline
         dayEntries.forEach { entry ->
             val segmentHeight =
-                (entry.amount.toFloat() / maxVal * drawableHeight)
+                (entry.amount.toFloat() / maxVal * drawableHeight * dayProgress)
                     .coerceAtMost(drawableHeight).coerceAtLeast(1f)
             val segmentTop = segmentBottom - segmentHeight
             val cornerRadiusPx =
