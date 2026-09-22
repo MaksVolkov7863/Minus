@@ -6,11 +6,13 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.serranoie.app.minus.R
 import com.serranoie.app.minus.data.repository.BudgetRepository
+import com.serranoie.app.minus.data.repository.SettingsRepository
 import com.serranoie.app.minus.domain.model.BudgetPeriod
 import com.serranoie.app.minus.domain.model.BudgetSettings
 import com.serranoie.app.minus.domain.model.PaidRecurrentOccurrence
 import com.serranoie.app.minus.domain.model.RemainingBudgetStrategy
 import com.serranoie.app.minus.domain.model.Transaction
+import com.serranoie.app.minus.domain.model.UserSettings
 import com.serranoie.app.minus.domain.time.MidnightTransitionManager
 import com.serranoie.app.minus.domain.usecase.ClearEarlyFinishStateUseCase
 import com.serranoie.app.minus.domain.usecase.FinishBudgetEarlyUseCase
@@ -52,6 +54,7 @@ class BudgetViewModelTest {
 
     private val context: Context = mockk(relaxed = true)
     private val budgetRepository: BudgetRepository = mockk(relaxed = true)
+    private val settingsRepository: SettingsRepository = mockk(relaxed = true)
     private val notificationHelper: NotificationHelper = mockk(relaxed = true)
     private val notificationScheduler: NotificationScheduler = mockk(relaxed = true)
     private val transactionHandler: BudgetTransactionHandler = mockk(relaxed = true)
@@ -93,6 +96,7 @@ class BudgetViewModelTest {
         every { observeCurrentPeriodBoundaryUseCase() } returns boundaryFlow
         every { observeCurrentPeriodRolloverUseCase() } returns rolloverFlow
         every { midnightTransitionManager.pendingRollover } returns pendingRolloverFlow
+        every { settingsRepository.observeSettings() } returns MutableStateFlow(UserSettings.DEFAULT)
         every { context.getString(R.string.expense_queued_for_next_period) } returns "Gasto en cola para el proximo periodo"
         every { context.getString(R.string.history_snackbar_delete_transaction_failed) } returns "Could not delete transaction"
         every { context.getString(R.string.history_snackbar_restore_transaction_failed) } returns "Could not restore transaction"
@@ -106,6 +110,7 @@ class BudgetViewModelTest {
     private fun newViewModel() = BudgetViewModel(
         context = context,
         budgetRepository = budgetRepository,
+        settingsRepository = settingsRepository,
         notificationHelper = notificationHelper,
         notificationScheduler = notificationScheduler,
         transactionHandler = transactionHandler,

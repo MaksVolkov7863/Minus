@@ -2,6 +2,7 @@ package com.serranoie.app.minus.presentation.ui.editor.sheets.split
 
 import com.serranoie.app.minus.domain.model.BudgetPeriod
 import com.serranoie.app.minus.domain.model.BudgetSplitMode
+import com.serranoie.app.minus.domain.model.BudgetState
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -19,44 +20,33 @@ fun availablePeriodsFor(totalDays: Int): List<BudgetPeriod> = buildList {
     if (totalDays >= 30) add(BudgetPeriod.MONTHLY)
 }
 
-private fun budgetForPeriod(
-    totalBudget: BigDecimal,
-    totalDays: Int,
-    period: BudgetPeriod,
-): BigDecimal {
-    if (totalBudget == BigDecimal.ZERO || totalDays <= 0) return BigDecimal.ZERO
+internal data class BlockWindow(
+    val daysFromStart: Int,
+    val daysInBlock: Int,
+    val daysAfter: Int,
+)
 
-    val periodDays = period.toDays()
-    // coerceAtLeast(1) so a period longer than the range (e.g. a 10-day
-    // budget with a MONTHLY view) returns the full budget for the single
-    // "partial" period instead of throwing ArithmeticException. Mirrors the
-    // guard in blocksRemaining.
-    val numPeriods = (totalDays / periodDays).coerceAtLeast(1)
-
-    return totalBudget.divide(BigDecimal(numPeriods), 2, RoundingMode.HALF_UP)
+internal fun blockWindow(totalDays: Int, daysRemaining: Int, blockDays: Int): BlockWindow {
+    val daysElapsed = (totalDays - daysRemaining).coerceAtLeast(0)
+    val offsetInBlock = daysElapsed % blockDays
+    val daysFromStart = daysRemaining + offsetInBlock
+    val daysInBlock = minOf(blockDays, daysFromStart)
+    return BlockWindow(daysFromStart, daysInBlock, daysFromStart - daysInBlock)
 }
 
-fun splitBudget(
+private fun share(pool: BigDecimal, days: Int, over: Int): BigDecimal =
+    if (over <= 0 || pool.signum() <= 0) BigDecimal.ZERO
+    else pool.multiply(BigDecimal(days)).divide(BigDecimal(over), 2, RoundingMode.HALF_UP)
+
+fun staticBlockBudget(
     totalBudget: BigDecimal,
-    totalSpent: BigDecimal,
     totalDays: Int,
     daysRemaining: Int,
     period: BudgetPeriod,
-    mode: BudgetSplitMode,
 ): BigDecimal {
-    if (totalBudget == BigDecimal.ZERO || totalDays <= 0) return BigDecimal.ZERO
-    return when (mode) {
-        BudgetSplitMode.STATIC ->
-            budgetForPeriod(totalBudget, totalDays, period)
-
-        BudgetSplitMode.DYNAMIC -> {
-            if (daysRemaining <= 0) return BigDecimal.ZERO
-            val remaining = totalBudget.subtract(totalSpent)
-            if (remaining <= BigDecimal.ZERO) return BigDecimal.ZERO
-            val daily = remaining.divide(BigDecimal(daysRemaining), 2, RoundingMode.HALF_UP)
-            daily.multiply(BigDecimal(period.toDays()))
-        }
-    }
+    if (totalDays <= 0) return BigDecimal.ZERO
+    val window = blockWindow(totalDays, daysRemaining, period.toDays())
+    return share(totalBudget, window.daysInBlock, totalDays)
 }
 
 data class DynamicAllocations(
@@ -79,6 +69,10 @@ fun computeDynamicAllocations(
     totalSpentInPeriod: BigDecimal,
     totalSpentToday: BigDecimal,
     daysRemaining: Int,
+    totalDays: Int = daysRemaining,
+    totalSpentThisWeek: BigDecimal = BigDecimal.ZERO,
+    totalSpentThisBiweek: BigDecimal = BigDecimal.ZERO,
+    totalSpentThisMonth: BigDecimal = BigDecimal.ZERO,
 ): DynamicAllocations {
     if (totalBudget <= BigDecimal.ZERO || daysRemaining <= 0) {
         return DynamicAllocations(
@@ -100,35 +94,19 @@ fun computeDynamicAllocations(
         )
     }
 
-    val daily = remaining.divide(BigDecimal(daysRemaining), 2, RoundingMode.HALF_UP)
-    val weekly = remaining.divide(
-        BigDecimal(blocksRemaining(daysRemaining, 7)),
-        2,
-        RoundingMode.HALF_UP,
-    )
-    val biweekly = remaining.divide(
-        BigDecimal(blocksRemaining(daysRemaining, 14)),
-        2,
-        RoundingMode.HALF_UP,
-    )
-    val monthly = remaining.divide(
-        BigDecimal(blocksRemaining(daysRemaining, 30)),
-        2,
-        RoundingMode.HALF_UP,
-    )
+    fun block(period: BudgetPeriod, spentInBlock: BigDecimal): BigDecimal {
+        val window = blockWindow(totalDays, daysRemaining, period.toDays())
+        return share(remaining.add(spentInBlock), window.daysInBlock, window.daysFromStart)
+    }
 
+    val daily = block(BudgetPeriod.DAILY, totalSpentToday)
     return DynamicAllocations(
         dailyAllocation = daily,
-        weeklyAllocation = weekly,
-        biweeklyAllocation = biweekly,
-        monthlyAllocation = monthly,
+        weeklyAllocation = block(BudgetPeriod.WEEKLY, totalSpentThisWeek),
+        biweeklyAllocation = block(BudgetPeriod.BIWEEKLY, totalSpentThisBiweek),
+        monthlyAllocation = block(BudgetPeriod.MONTHLY, totalSpentThisMonth),
         isTodayOverDailyAllocation = totalSpentToday > daily,
     )
-}
-
-internal fun blocksRemaining(daysRemaining: Int, blockDays: Int): Int {
-    val blocks = (daysRemaining + blockDays - 1) / blockDays
-    return blocks.coerceAtLeast(1)
 }
 
 data class NextBlockAllocations(
@@ -162,25 +140,45 @@ fun computeNextBlockAllocations(
         return NextBlockAllocations.ZERO
     }
 
-    val daysElapsed = (totalDays - daysRemaining).coerceIn(0, totalDays - 1)
-    val lastDayOffset = totalDays - 1
-
-    fun nextBlock(blockDays: Int): BigDecimal {
-        val currentBlockIndex = daysElapsed / blockDays
-        val currentBlockEndOffset = currentBlockIndex * blockDays + blockDays - 1
-        val daysAfterCurrentBlock = lastDayOffset - currentBlockEndOffset
-        if (daysAfterCurrentBlock <= 0) return BigDecimal.ZERO
-        return remaining.divide(
-            BigDecimal(blocksRemaining(daysAfterCurrentBlock, blockDays)),
-            2,
-            RoundingMode.HALF_UP,
-        )
+    fun nextBlock(period: BudgetPeriod): BigDecimal {
+        val window = blockWindow(totalDays, daysRemaining, period.toDays())
+        return share(remaining, minOf(period.toDays(), window.daysAfter), window.daysAfter)
     }
 
     return NextBlockAllocations(
-        dailyAllocation = nextBlock(1),
-        weeklyAllocation = nextBlock(7),
-        biweeklyAllocation = nextBlock(14),
-        monthlyAllocation = nextBlock(30),
+        dailyAllocation = nextBlock(BudgetPeriod.DAILY),
+        weeklyAllocation = nextBlock(BudgetPeriod.WEEKLY),
+        biweeklyAllocation = nextBlock(BudgetPeriod.BIWEEKLY),
+        monthlyAllocation = nextBlock(BudgetPeriod.MONTHLY),
     )
 }
+
+fun BudgetState.dynamicAllocations(draft: BigDecimal = BigDecimal.ZERO): DynamicAllocations =
+    computeDynamicAllocations(
+        totalBudget = totalBudget,
+        totalSpentInPeriod = totalSpentInPeriod.add(draft),
+        totalSpentToday = totalSpentToday.add(draft),
+        daysRemaining = daysRemaining,
+        totalDays = periodTotalDays,
+        totalSpentThisWeek = totalSpentThisWeek.add(draft),
+        totalSpentThisBiweek = totalSpentThisBiweek.add(draft),
+        totalSpentThisMonth = totalSpentThisMonth.add(draft),
+    )
+
+fun BudgetState.allocationFor(
+    period: BudgetPeriod,
+    splitMode: BudgetSplitMode,
+    draft: BigDecimal = BigDecimal.ZERO,
+): BigDecimal = when (splitMode) {
+    BudgetSplitMode.STATIC -> staticBlockBudget(totalBudget, periodTotalDays, daysRemaining, period)
+
+    BudgetSplitMode.DYNAMIC -> dynamicAllocations(draft).forPeriod(period)
+}
+
+fun BudgetState.nextAllocationFor(period: BudgetPeriod, draft: BigDecimal = BigDecimal.ZERO): BigDecimal =
+    computeNextBlockAllocations(
+        totalBudget = totalBudget,
+        totalSpentInPeriod = totalSpentInPeriod.add(draft),
+        totalDays = periodTotalDays,
+        daysRemaining = daysRemaining,
+    ).forPeriod(period)

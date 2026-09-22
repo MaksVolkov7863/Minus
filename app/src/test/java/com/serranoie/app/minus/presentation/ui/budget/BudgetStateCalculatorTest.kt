@@ -406,6 +406,45 @@ class BudgetStateCalculatorTest {
 
         assertThat(result.totalSpentInPeriod).isEqualTo(BigDecimal("20.00"))
         assertThat(result.totalSpentToday).isEqualTo(BigDecimal("5.00"))
-        assertThat(result.remainingToday).isEqualTo(BigDecimal("76.67"))
+        assertThat(result.remainingToday).isEqualTo(BigDecimal("77.08"))
+    }
+
+    @Test
+    fun `reserveUpcomingCharges counts a subscription due later in the period from day one`() {
+        val netflix = Transaction(
+            id = 1L,
+            amount = BigDecimal("15.00"),
+            comment = "Netflix",
+            date = LocalDate.of(2026, 1, 25).atStartOfDay(),
+            periodId = 3L,
+            isRecurrent = true,
+            recurrentFrequency = RecurrentFrequency.MONTHLY,
+            subscriptionDay = 25,
+        )
+        val settings = settings(
+            totalBudget = BigDecimal("1000"),
+            start = LocalDate.of(2026, 3, 1),
+            end = LocalDate.of(2026, 3, 31),
+            splitMode = BudgetSplitMode.DYNAMIC,
+        )
+
+        val deferred = calculator.calculateBudgetState(
+            settings = settings,
+            transactions = emptyList(),
+            currentDate = LocalDate.of(2026, 3, 10),
+            allTransactions = listOf(netflix),
+        )
+        val reserved = calculator.calculateBudgetState(
+            settings = settings,
+            transactions = emptyList(),
+            currentDate = LocalDate.of(2026, 3, 10),
+            allTransactions = listOf(netflix),
+            reserveUpcomingCharges = true,
+        )
+
+        assertThat(deferred.totalSpentInPeriod).isEqualTo(BigDecimal.ZERO)
+        assertThat(reserved.totalSpentInPeriod).isEqualTo(BigDecimal("15.00"))
+        assertThat(reserved.totalSpentToday).isEqualTo(BigDecimal.ZERO)
+        assertThat(reserved.dailyBudget).isLessThan(deferred.dailyBudget)
     }
 }

@@ -95,6 +95,7 @@ import com.serranoie.app.minus.domain.model.BudgetState
 import com.serranoie.app.minus.domain.model.RemainingBudgetStrategy
 import com.serranoie.app.minus.domain.model.SupportedCurrency
 import com.serranoie.app.minus.domain.model.SupportedCurrencyData
+import com.serranoie.app.minus.presentation.ui.editor.sheets.split.allocationFor
 import com.serranoie.app.minus.presentation.ui.editor.sheets.split.CalculatedSplitCard
 import com.serranoie.app.minus.presentation.ui.theme.component.budget.formula.BudgetFormulaRequest
 import com.serranoie.app.minus.presentation.ui.theme.component.budget.formula.BudgetFormulaSource
@@ -533,7 +534,7 @@ private fun ViewBudgetContent(
                 }
                 CalculatedSplitCard(
                     periodCache = periodCache,
-                    allocation = budgetState?.allocationFor(periodCache) ?: BigDecimal.ZERO,
+                    allocation = budgetState?.allocationFor(periodCache, splitMode) ?: BigDecimal.ZERO,
                     splitMode = splitMode,
                     currencyFormat = currencyFormat,
                     totalBudget = budgetState?.totalBudget ?: BigDecimal.ZERO,

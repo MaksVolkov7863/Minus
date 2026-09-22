@@ -212,7 +212,7 @@ fun BudgetFormulaContent(request: BudgetFormulaRequest, modifier: Modifier = Mod
         rows.forEachIndexed { index, row ->
             Spacer(modifier = Modifier.height(if (index == 0) 16.dp else 12.dp))
             Text(
-                text = row.captionText(periodName),
+                text = row.captionText(periodName, request.viewPeriod),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -303,7 +303,7 @@ private fun FormulaTerm.Count.label(): String = pluralStringResource(
 )
 
 @Composable
-private fun FormulaRow.captionText(periodName: String): String = when (caption) {
+private fun FormulaRow.captionText(periodName: String, period: BudgetPeriod): String = when (caption) {
     FormulaCaption.SURPLUS_SPLIT -> stringResource(R.string.budget_formula_caption_surplus_split)
     FormulaCaption.SURPLUS_FIRST_DAY -> stringResource(R.string.budget_formula_caption_surplus_first_day)
     FormulaCaption.ADJUSTMENTS -> stringResource(R.string.budget_formula_caption_adjustments)
@@ -312,6 +312,15 @@ private fun FormulaRow.captionText(periodName: String): String = when (caption) 
     FormulaCaption.REMAINING_BUDGET -> stringResource(R.string.budget_formula_caption_remaining_budget)
     FormulaCaption.SPREAD_OVER_LEFT -> stringResource(R.string.budget_formula_caption_spread_over_left)
     FormulaCaption.LEFT -> stringResource(R.string.budget_formula_caption_left)
+    FormulaCaption.NEXT_BLOCK -> stringResource(
+        when (period) {
+            BudgetPeriod.DAILY -> R.string.budget_pill_next_daily
+            BudgetPeriod.WEEKLY -> R.string.budget_pill_next_weekly
+            BudgetPeriod.BIWEEKLY -> R.string.budget_pill_next_biweekly
+            BudgetPeriod.MONTHLY -> R.string.budget_pill_next_monthly
+        },
+        "",
+    ).trim()
 }
 
 private fun BudgetPeriod.nameRes(): Int = when (this) {

@@ -109,11 +109,7 @@ class BudgetPillScreenshotTest {
                             isOverBudget = false,
                             totalBudget = BigDecimal("500.00"),
                             totalSpentInPeriod = BigDecimal("12.50"),
-                            dailyAllocation = BigDecimal("32.50"),
-                            weeklyAllocation = BigDecimal("162.50"),
-                            biweeklyAllocation = BigDecimal("487.50"),
-                            monthlyAllocation = BigDecimal("487.50"),
-                            isTodayOverDailyAllocation = false,
+                            periodTotalDays = 15,
                         ),
                         budgetSettings = BudgetSettings(
                             totalBudget = BigDecimal("500.00"),
@@ -170,8 +166,8 @@ class BudgetPillScreenshotTest {
     fun budgetPillDailyExceeded() {
         Locale.setDefault(Locale.US)
         // 1000 budget, 600 spent in period (today: 500), 10 days remaining.
-        //   remaining = 400, dailyAllocation = 400/10 = 40.00
-        //   totalSpentToday (500) > dailyAllocation (40) → isTodayOverDailyAllocation = true
+        //   pool at start of today = 400 + 500 = 900, daily = 900/10 = 90.00
+        //   totalSpentToday (500) > 90.00 → over today's allocation
         //   totalSpentInPeriod (600) < totalBudget (1000) → isOverBudget = false
         // Label should switch to "Daily amount exceeded" (Monto diario excedido in ES).
         paparazzi.snapshot {
@@ -187,8 +183,7 @@ class BudgetPillScreenshotTest {
                             isOverBudget = false,
                             totalBudget = BigDecimal("1000.00"),
                             totalSpentInPeriod = BigDecimal("600.00"),
-                            dailyAllocation = BigDecimal("40.00"),
-                            isTodayOverDailyAllocation = true,
+                            periodTotalDays = 10,
                         ),
                         budgetSettings = BudgetSettings(
                             totalBudget = BigDecimal("1000.00"),
@@ -223,7 +218,7 @@ class BudgetPillScreenshotTest {
                             isOverBudget = false,
                             totalBudget = BigDecimal("120.00"),
                             totalSpentInPeriod = BigDecimal("50.00"),
-                            nextDailyAllocation = BigDecimal("35.00"),
+                            periodTotalDays = 3,
                         ),
                         budgetSettings = BudgetSettings(
                             totalBudget = BigDecimal("120.00"),
@@ -260,11 +255,7 @@ class BudgetPillScreenshotTest {
                             totalBudget = BigDecimal("1000.00"),
                             totalSpentInPeriod = BigDecimal("600.00"),
                             totalSpentThisWeek = BigDecimal("600.00"),
-                            dailyAllocation = BigDecimal("40.00"),
-                            weeklyAllocation = BigDecimal("333.33"),
-                            biweeklyAllocation = BigDecimal("466.67"),
-                            isTodayOverDailyAllocation = true,
-                            nextWeeklyAllocation = BigDecimal("200.00"),
+                            periodTotalDays = 21,
                         ),
                         budgetSettings = BudgetSettings(
                             totalBudget = BigDecimal("1000.00"),

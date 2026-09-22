@@ -176,10 +176,6 @@ class BudgetPeriodSheetInteractionScreenshotTest {
 		isOverBudget = false,
 		totalBudget = BigDecimal("900.00"),
 		totalSpentInPeriod = BigDecimal("600.00"),
-		dailyAllocation = BigDecimal("30.00"),
-		weeklyAllocation = BigDecimal("150.00"),
-		biweeklyAllocation = BigDecimal("300.00"),
-		monthlyAllocation = BigDecimal("300.00"),
-		isTodayOverDailyAllocation = false,
+		periodTotalDays = 30,
 	)
 }

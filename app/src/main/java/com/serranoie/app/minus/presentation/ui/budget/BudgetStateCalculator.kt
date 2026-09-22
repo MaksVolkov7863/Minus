@@ -6,9 +6,6 @@ import com.serranoie.app.minus.domain.model.BudgetSplitMode
 import com.serranoie.app.minus.domain.model.BudgetState
 import com.serranoie.app.minus.domain.model.PaidRecurrentOccurrence
 import com.serranoie.app.minus.domain.model.Transaction
-import com.serranoie.app.minus.presentation.ui.editor.sheets.split.computeDynamicAllocations
-import com.serranoie.app.minus.presentation.ui.editor.sheets.split.computeNextBlockAllocations
-import com.serranoie.app.minus.presentation.ui.editor.sheets.split.splitBudget
 import com.serranoie.app.minus.presentation.ui.history.splitRecurringAndOneTime
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -46,6 +43,7 @@ class BudgetStateCalculator @Inject constructor() {
         currentDate: LocalDate,
         paidOccurrences: Set<PaidRecurrentOccurrence> = emptySet(),
         allTransactions: List<Transaction> = transactions,
+        reserveUpcomingCharges: Boolean = false,
     ): BudgetState {
         val periodEnd = settings.getPeriodEndDate()
         val daysRemaining = ChronoUnit.DAYS.between(currentDate, periodEnd).toInt() + 1
@@ -57,7 +55,7 @@ class BudgetStateCalculator @Inject constructor() {
             filteredTransactions = transactions,
             periodStart = settings.startDate,
             periodEnd = periodEnd,
-            today = currentDate,
+            today = if (reserveUpcomingCharges) periodEnd else currentDate,
             paidOccurrences = paidOccurrences,
         ).first
         val totalExpensesInPeriod = activeTransactions
@@ -83,6 +81,15 @@ class BudgetStateCalculator @Inject constructor() {
         val effectiveTotalBudget = settings.totalBudget
             .add(totalIncomeInPeriod)
             .subtract(totalDecreasesInPeriod)
+        val todayTransactions = activeTransactions.filter { it.date?.toLocalDate() == currentDate }
+        val regularSpentToday = todayTransactions.filter { it.amount > BigDecimal.ZERO }.sumOf { it.amount }
+        val incomeToday = todayTransactions.filter { it.amount < BigDecimal.ZERO }.sumOf { it.amount }.abs()
+
+        val recurringDueToday = unpaidRecurringCharges
+            .filter { it.date?.toLocalDate() == currentDate }
+            .sumOf { it.amount }
+        val spentToday = regularSpentToday.add(recurringDueToday)
+
         val remainingBudget = effectiveTotalBudget.subtract(totalExpensesInPeriod)
         val originalDailyBudget = when (settings.splitMode) {
             BudgetSplitMode.DYNAMIC -> {
@@ -91,6 +98,7 @@ class BudgetStateCalculator @Inject constructor() {
                 } else {
                     val remaining = effectiveTotalBudget.subtract(totalExpensesInPeriod)
                         .subtract(carryForFirstDay)
+                        .add(spentToday)
                     if (remaining <= BigDecimal.ZERO) {
                         BigDecimal.ZERO
                     } else {
@@ -112,15 +120,6 @@ class BudgetStateCalculator @Inject constructor() {
             }
         }
 
-        val todayTransactions = activeTransactions.filter { it.date?.toLocalDate() == currentDate }
-        val regularSpentToday = todayTransactions.filter { it.amount > BigDecimal.ZERO }.sumOf { it.amount }
-        val incomeToday = todayTransactions.filter { it.amount < BigDecimal.ZERO }.sumOf { it.amount }.abs()
-
-        val recurringDueToday = unpaidRecurringCharges
-            .filter { it.date?.toLocalDate() == currentDate }
-            .sumOf { it.amount }
-        val spentToday = regularSpentToday.add(recurringDueToday)
-
         val totalSpentThisWeek = calculateSpentInSubPeriod(
             activeTransactions + unpaidRecurringCharges, settings.startDate, currentDate, 7
         )
@@ -141,55 +140,7 @@ class BudgetStateCalculator @Inject constructor() {
             0f
         }
 
-        val allocations = if (settings.splitMode == BudgetSplitMode.DYNAMIC) {
-            // DYNAMIC: (remaining) / blocksRemaining(daysRemaining, period)
-            val a = computeDynamicAllocations(
-                totalBudget = effectiveTotalBudget,
-                totalSpentInPeriod = totalExpensesInPeriod,
-                totalSpentToday = spentToday,
-                daysRemaining = daysRemaining.coerceAtLeast(0),
-            )
-            Quintuple(
-                a.dailyAllocation, a.weeklyAllocation,
-                a.biweeklyAllocation, a.monthlyAllocation,
-                a.isTodayOverDailyAllocation,
-            )
-        } else {
-            // STATIC: totalBudget / (totalDays / periodBlockDays) for each
-            val totalDaysClamped = originalTotalDays.coerceAtLeast(1)
-            val totalSpent = totalExpensesInPeriod
-            Quintuple(
-                daily = splitBudget(
-                    totalBudget = effectiveTotalBudget, totalSpent = totalSpent,
-                    totalDays = totalDaysClamped, daysRemaining = daysRemaining.coerceAtLeast(0),
-                    period = BudgetPeriod.DAILY, mode = BudgetSplitMode.STATIC,
-                ),
-                weekly = splitBudget(
-                    totalBudget = effectiveTotalBudget, totalSpent = totalSpent,
-                    totalDays = totalDaysClamped, daysRemaining = daysRemaining.coerceAtLeast(0),
-                    period = BudgetPeriod.WEEKLY, mode = BudgetSplitMode.STATIC,
-                ),
-                biweekly = splitBudget(
-                    totalBudget = effectiveTotalBudget, totalSpent = totalSpent,
-                    totalDays = totalDaysClamped, daysRemaining = daysRemaining.coerceAtLeast(0),
-                    period = BudgetPeriod.BIWEEKLY, mode = BudgetSplitMode.STATIC,
-                ),
-                monthly = splitBudget(
-                    totalBudget = effectiveTotalBudget, totalSpent = totalSpent,
-                    totalDays = totalDaysClamped, daysRemaining = daysRemaining.coerceAtLeast(0),
-                    period = BudgetPeriod.MONTHLY, mode = BudgetSplitMode.STATIC,
-                ),
-                isOverDaily = false,
-            )
-        }
-
         val totalSpentInPeriod = totalExpensesInPeriod
-        val nextAllocations = computeNextBlockAllocations(
-            totalBudget = effectiveTotalBudget,
-            totalSpentInPeriod = totalSpentInPeriod,
-            totalDays = originalTotalDays,
-            daysRemaining = daysRemaining.coerceAtLeast(0),
-        )
 
         return BudgetState(
             remainingToday = remainingToday,
@@ -203,15 +154,6 @@ class BudgetStateCalculator @Inject constructor() {
             totalSpentThisWeek = totalSpentThisWeek,
             totalSpentThisBiweek = totalSpentThisBiweek,
             totalSpentThisMonth = totalSpentThisMonth,
-            dailyAllocation = allocations.daily,
-            weeklyAllocation = allocations.weekly,
-            biweeklyAllocation = allocations.biweekly,
-            monthlyAllocation = allocations.monthly,
-            isTodayOverDailyAllocation = allocations.isOverDaily,
-            nextDailyAllocation = nextAllocations.dailyAllocation,
-            nextWeeklyAllocation = nextAllocations.weeklyAllocation,
-            nextBiweeklyAllocation = nextAllocations.biweeklyAllocation,
-            nextMonthlyAllocation = nextAllocations.monthlyAllocation,
             periodTotalDays = originalTotalDays,
         )
     }
@@ -237,11 +179,3 @@ class BudgetStateCalculator @Inject constructor() {
             .sumOf { it.amount }
     }
 }
-
-private data class Quintuple(
-    val daily: BigDecimal,
-    val weekly: BigDecimal,
-    val biweekly: BigDecimal,
-    val monthly: BigDecimal,
-    val isOverDaily: Boolean,
-)

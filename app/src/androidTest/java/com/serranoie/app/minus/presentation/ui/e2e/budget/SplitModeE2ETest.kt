@@ -27,8 +27,6 @@ import com.serranoie.app.minus.presentation.ui.editor.sheets.BUDGET_PERIOD_SPLIT
 import com.serranoie.app.minus.presentation.ui.editor.sheets.BudgetPeriodSheet
 import com.serranoie.app.minus.presentation.ui.editor.sheets.budgetPeriodToggleTag
 import com.serranoie.app.minus.presentation.ui.editor.sheets.split.BUDGET_PERIOD_CALCULATED_CARD_TAG
-import com.serranoie.app.minus.presentation.ui.editor.sheets.split.computeDynamicAllocations
-import com.serranoie.app.minus.presentation.ui.editor.sheets.split.splitBudget
 import com.serranoie.app.minus.presentation.ui.theme.MinusTheme
 import org.junit.Rule
 import org.junit.Test
@@ -78,73 +76,8 @@ class SplitModeE2ETest {
             totalBudget = totalBudget,
             totalSpentInPeriod = totalSpent,
         )
-        val alloc = if (splitMode == BudgetSplitMode.DYNAMIC) {
-            val a = computeDynamicAllocations(
-                totalBudget = totalBudget,
-                totalSpentInPeriod = totalSpent,
-                totalSpentToday = BigDecimal.ZERO,
-                daysRemaining = 28,
-            )
-            Quintuple(
-                a.dailyAllocation, a.weeklyAllocation,
-                a.biweeklyAllocation, a.monthlyAllocation,
-                a.isTodayOverDailyAllocation,
-            )
-        } else {
-            // STATIC: totalBudget / (30 / periodBlockDays) for each period.
-            Quintuple(
-                daily = splitBudget(
-                    totalBudget,
-                    totalSpent,
-                    30,
-                    28,
-                    BudgetPeriod.DAILY,
-                    BudgetSplitMode.STATIC
-                ),
-                weekly = splitBudget(
-                    totalBudget,
-                    totalSpent,
-                    30,
-                    28,
-                    BudgetPeriod.WEEKLY,
-                    BudgetSplitMode.STATIC
-                ),
-                biweekly = splitBudget(
-                    totalBudget,
-                    totalSpent,
-                    30,
-                    28,
-                    BudgetPeriod.BIWEEKLY,
-                    BudgetSplitMode.STATIC
-                ),
-                monthly = splitBudget(
-                    totalBudget,
-                    totalSpent,
-                    30,
-                    28,
-                    BudgetPeriod.MONTHLY,
-                    BudgetSplitMode.STATIC
-                ),
-                isOverDaily = false,
-            )
-        }
-        return base.copy(
-            dailyAllocation = alloc.daily,
-            weeklyAllocation = alloc.weekly,
-            biweeklyAllocation = alloc.biweekly,
-            monthlyAllocation = alloc.monthly,
-            isTodayOverDailyAllocation = alloc.isOverDaily,
-        )
+        return base.copy(periodTotalDays = 30)
     }
-
-    private data class Quintuple(
-        val daily: BigDecimal,
-        val weekly: BigDecimal,
-        val biweekly: BigDecimal,
-        val monthly: BigDecimal,
-        val isOverDaily: Boolean,
-    )
-
     private fun formatExpected(
         value: BigDecimal,
         currencyCode: String = "USD",
@@ -456,21 +389,7 @@ class SplitModeE2ETest {
             totalBudget = budget,
             totalSpentInPeriod = spent,
         )
-        // Fill the new per-mode allocation fields so the
-        // CalculatedSplitCard can render without recomputing.
-        val alloc = computeDynamicAllocations(
-            totalBudget = budget,
-            totalSpentInPeriod = spent,
-            totalSpentToday = BigDecimal.ZERO,
-            daysRemaining = daysLeft,
-        )
-        val state = baseState.copy(
-            dailyAllocation = alloc.dailyAllocation,
-            weeklyAllocation = alloc.weeklyAllocation,
-            biweeklyAllocation = alloc.biweeklyAllocation,
-            monthlyAllocation = alloc.monthlyAllocation,
-            isTodayOverDailyAllocation = alloc.isTodayOverDailyAllocation,
-        )
+        val state = baseState.copy(periodTotalDays = 30)
         return settings to state
     }
 

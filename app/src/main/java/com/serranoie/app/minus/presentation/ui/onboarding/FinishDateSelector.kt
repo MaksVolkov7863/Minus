@@ -40,9 +40,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.serranoie.app.minus.R
 import com.serranoie.app.minus.domain.model.BudgetPeriod
-import com.serranoie.app.minus.domain.model.BudgetSplitMode
 import com.serranoie.app.minus.presentation.ui.editor.sheets.split.availablePeriodsFor
-import com.serranoie.app.minus.presentation.ui.editor.sheets.split.splitBudget
+import com.serranoie.app.minus.presentation.ui.editor.sheets.split.staticBlockBudget
 import com.serranoie.app.minus.presentation.ui.theme.MinusTheme
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -195,17 +194,11 @@ fun FinishDateSelector(
                     ) {
                         available.forEach { period ->
                             val preview = if (totalBudget > BigDecimal.ZERO) {
-                                // Onboarding is pre-period, so the only meaningful view
-                                // is the static split. Dynamic degenerates to the same
-                                // number once the period starts, so we hard-code STATIC
-                                // here to avoid showing misleading previews.
-                                splitBudget(
+                                staticBlockBudget(
                                     totalBudget = totalBudget,
-                                    totalSpent = BigDecimal.ZERO,
                                     totalDays = totalDays,
                                     daysRemaining = totalDays,
                                     period = period,
-                                    mode = BudgetSplitMode.STATIC,
                                 )
                             } else null
                         }

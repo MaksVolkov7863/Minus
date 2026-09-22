@@ -31,7 +31,6 @@ class BudgetFormulaTest {
         totalBudget = BigDecimal("1050.00"),
         totalSpentInPeriod = BigDecimal("400.00"),
         totalSpentThisWeek = BigDecimal("150.00"),
-        weeklyAllocation = BigDecimal("216.67"),
         periodTotalDays = 30,
     )
 
@@ -68,6 +67,33 @@ class BudgetFormulaTest {
         assertThat(rows.last().result.compareTo(metrics.periodRemaining)).isEqualTo(0)
     }
 
+    @Test
+    fun `daily over its allocation ends with tomorrow's projection instead of a negative amount`() {
+        val over = state.copy(
+            totalSpentToday = BigDecimal("100.00"),
+            totalSpentInPeriod = BigDecimal("400.00"),
+        )
+        val metrics = calculateBudgetMetrics(over, BudgetPeriod.DAILY, BudgetSplitMode.DYNAMIC)
+        val rows = buildBudgetFormula(request(BudgetSplitMode.DYNAMIC).copy(budgetState = over, viewPeriod = BudgetPeriod.DAILY))
+
+        assertThat(rows.last().caption).isEqualTo(FormulaCaption.NEXT_BLOCK)
+        assertThat(rows.none { it.caption == FormulaCaption.LEFT }).isTrue()
+        assertThat(rows.last().result.compareTo(metrics.nextPeriodAllocation)).isEqualTo(0)
+        assertThat(evaluate(rows.last()).compareTo(rows.last().result)).isEqualTo(0)
+    }
+
+    @Test
+    fun `static over its block keeps the plain left row and never projects`() {
+        val over = state.copy(totalSpentToday = BigDecimal("100.00"))
+        val metrics = calculateBudgetMetrics(over, BudgetPeriod.DAILY, BudgetSplitMode.STATIC)
+        val rows = buildBudgetFormula(request(BudgetSplitMode.STATIC).copy(budgetState = over, viewPeriod = BudgetPeriod.DAILY))
+
+        assertThat(metrics.isOverCurrentSubPeriod).isTrue()
+        assertThat(metrics.nextPeriodAllocation).isNull()
+        assertThat(rows.last().caption).isEqualTo(FormulaCaption.LEFT)
+        assertThat(rows.last().result.compareTo(metrics.periodRemaining)).isEqualTo(0)
+    }
+
     private fun request(splitMode: BudgetSplitMode) = BudgetFormulaRequest(
         budgetState = state,
         budgetSettings = settings,
@@ -79,7 +105,9 @@ class BudgetFormulaTest {
     private fun evaluate(row: FormulaRow): BigDecimal {
         val first = row.terms.first()
         if (first is FormulaTerm.Fraction) {
-            return first.numerator.divide(BigDecimal(first.denominator.n), 2, RoundingMode.HALF_UP)
+            val times = (row.terms.getOrNull(2) as? FormulaTerm.Count)?.n ?: 1
+            return first.numerator.multiply(BigDecimal(times))
+                .divide(BigDecimal(first.denominator.n), 2, RoundingMode.HALF_UP)
         }
         val left = (first as FormulaTerm.Amount).value
         val op = (row.terms[1] as FormulaTerm.Op).symbol

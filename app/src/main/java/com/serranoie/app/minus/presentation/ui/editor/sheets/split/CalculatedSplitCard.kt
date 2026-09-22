@@ -80,12 +80,11 @@ fun CalculatedSplitCard(
         }
 
         BudgetSplitMode.DYNAMIC -> {
-            val blockCount = blocksRemaining(daysRemaining, periodBlockDays)
             stringResource(
                 R.string.budget_split_helper_dynamic_brief,
                 currencyFormat.format(remaining),
-                blockCount,
-                periodWord,
+                daysRemaining,
+                stringResource(R.string.budget_split_period_daily),
             )
         }
     }

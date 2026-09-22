@@ -6,8 +6,8 @@ import com.serranoie.app.minus.R
 import com.serranoie.app.minus.domain.model.BudgetPeriod
 import com.serranoie.app.minus.domain.model.BudgetSplitMode
 import com.serranoie.app.minus.domain.model.BudgetState
-import com.serranoie.app.minus.presentation.ui.editor.sheets.split.computeDynamicAllocations
-import com.serranoie.app.minus.presentation.ui.editor.sheets.split.computeNextBlockAllocations
+import com.serranoie.app.minus.presentation.ui.editor.sheets.split.dynamicAllocations
+import com.serranoie.app.minus.presentation.ui.editor.sheets.split.nextAllocationFor
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -46,21 +46,11 @@ internal fun calculateBudgetMetrics(
     }
     val periodSpent = basePeriodSpent.add(draftSpend)
     val spentInPeriod = state.totalSpentInPeriod.add(draftSpend)
-    val spentToday = state.totalSpentToday.add(draftSpend)
 
     val staticRemaining = periodBudget.subtract(periodSpent)
 
-    val liveDynamic = if (hasDraft && splitMode == BudgetSplitMode.DYNAMIC) {
-        computeDynamicAllocations(
-            totalBudget = state.totalBudget,
-            totalSpentInPeriod = spentInPeriod,
-            totalSpentToday = spentToday,
-            daysRemaining = state.daysRemaining,
-        )
-    } else {
-        null
-    }
-    val dynamicAllocation = liveDynamic?.forPeriod(period) ?: state.allocationFor(period)
+    val dynamic = if (splitMode == BudgetSplitMode.DYNAMIC) state.dynamicAllocations(draftSpend) else null
+    val dynamicAllocation = dynamic?.forPeriod(period) ?: BigDecimal.ZERO
 
     val periodRemaining = when (splitMode) {
         BudgetSplitMode.DYNAMIC ->
@@ -73,11 +63,8 @@ internal fun calculateBudgetMetrics(
 
     val isOverSubPeriod = when (splitMode) {
         BudgetSplitMode.DYNAMIC -> when (period) {
-            BudgetPeriod.DAILY ->
-                liveDynamic?.let { spentToday > it.dailyAllocation }
-                    ?: state.isTodayOverDailyAllocation
-
-            else -> dynamicAllocation.signum() == 1 && spentInPeriod > dynamicAllocation
+            BudgetPeriod.DAILY -> dynamic?.isTodayOverDailyAllocation == true
+            else -> dynamicAllocation.signum() == 1 && periodSpent > dynamicAllocation
         }
 
         BudgetSplitMode.STATIC -> staticRemaining.signum() == -1
@@ -89,18 +76,8 @@ internal fun calculateBudgetMetrics(
         periodSpent.divide(periodBudget, 2, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
     } else 0f
 
-    val nextAllocation = if (hasDraft) {
-        computeNextBlockAllocations(
-            totalBudget = state.totalBudget,
-            totalSpentInPeriod = spentInPeriod,
-            totalDays = state.periodTotalDays,
-            daysRemaining = state.daysRemaining,
-        ).forPeriod(period)
-    } else {
-        state.nextAllocationFor(period)
-    }
-    val nextPeriodAllocation = nextAllocation
-        .takeIf { isOverSubPeriod && !isOverBudget && it.signum() == 1 }
+    val nextPeriodAllocation = dynamic?.let { state.nextAllocationFor(period, draftSpend) }
+        ?.takeIf { isOverSubPeriod && !isOverBudget && it.signum() == 1 }
 
     return BudgetMetrics(
         periodRemaining = periodRemaining,
@@ -123,22 +100,22 @@ internal fun resolveExhaustedMessage(
     val dailyRem = state.dailyBudget.subtract(state.totalSpentToday)
     val isDailyExhausted = dailyRem.signum() <= 0
     val isWeeklyExhausted =
-        (state.dailyBudget.multiply(BigDecimal(7))).subtract(state.totalSpentInPeriod).signum() <= 0
+        (state.dailyBudget.multiply(BigDecimal(7))).subtract(state.totalSpentThisWeek).signum() <= 0
     val isBiweeklyExhausted =
-        (state.dailyBudget.multiply(BigDecimal(14))).subtract(state.totalSpentInPeriod)
+        (state.dailyBudget.multiply(BigDecimal(14))).subtract(state.totalSpentThisBiweek)
             .signum() <= 0
 
     return when (splitMode) {
         BudgetSplitMode.STATIC -> {
             val staticRem = when (period) {
                 BudgetPeriod.WEEKLY -> state.dailyBudget.multiply(BigDecimal(7))
-                    .subtract(state.totalSpentInPeriod)
+                    .subtract(state.totalSpentThisWeek)
 
                 BudgetPeriod.BIWEEKLY -> state.dailyBudget.multiply(BigDecimal(14))
-                    .subtract(state.totalSpentInPeriod)
+                    .subtract(state.totalSpentThisBiweek)
 
                 BudgetPeriod.MONTHLY -> state.dailyBudget.multiply(BigDecimal(30))
-                    .subtract(state.totalSpentInPeriod)
+                    .subtract(state.totalSpentThisMonth)
 
                 else -> BigDecimal.ZERO
             }
@@ -162,13 +139,14 @@ internal fun resolveExhaustedMessage(
         }
 
         BudgetSplitMode.DYNAMIC -> {
-            val isOverDaily = state.isTodayOverDailyAllocation
+            val a = state.dynamicAllocations()
+            val isOverDaily = a.isTodayOverDailyAllocation
             val isOverWeekly =
-                state.totalSpentInPeriod > state.weeklyAllocation && state.weeklyAllocation > BigDecimal.ZERO
+                state.totalSpentThisWeek > a.weeklyAllocation && a.weeklyAllocation > BigDecimal.ZERO
             val isOverBiweekly =
-                state.totalSpentInPeriod > state.biweeklyAllocation && state.biweeklyAllocation > BigDecimal.ZERO
+                state.totalSpentThisBiweek > a.biweeklyAllocation && a.biweeklyAllocation > BigDecimal.ZERO
             val isOverMonthly =
-                state.totalSpentInPeriod > state.monthlyAllocation && state.monthlyAllocation > BigDecimal.ZERO
+                state.totalSpentThisMonth > a.monthlyAllocation && a.monthlyAllocation > BigDecimal.ZERO
 
             val currentOver = when (period) {
                 BudgetPeriod.DAILY -> isOverDaily

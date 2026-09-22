@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.serranoie.app.minus.BuildConfig
 import com.serranoie.app.minus.R
 import com.serranoie.app.minus.data.repository.BudgetRepository
+import com.serranoie.app.minus.data.repository.SettingsRepository
+import com.serranoie.app.minus.domain.model.UserSettings
 import com.serranoie.app.minus.domain.model.BudgetSettings
 import com.serranoie.app.minus.domain.model.Category
 import com.serranoie.app.minus.domain.model.CreditCard
@@ -73,6 +75,7 @@ private const val TAG = "BudgetViewModel - ISAAC"
 class BudgetViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val budgetRepository: BudgetRepository,
+    private val settingsRepository: SettingsRepository,
     private val notificationHelper: NotificationHelper,
     private val notificationScheduler: NotificationScheduler,
     private val transactionHandler: BudgetTransactionHandler,
@@ -122,6 +125,7 @@ class BudgetViewModel @Inject constructor(
         budgetRepository.getActiveCategories(),
         budgetRepository.getPaidRecurrentOccurrences(),
         midnightTransitionManager.pendingRollover,
+        settingsRepository.observeSettings(),
     ) { params ->
         val settings = params[0] as BudgetSettings?
         val transactions = params[1] as List<Transaction>
@@ -138,6 +142,7 @@ class BudgetViewModel @Inject constructor(
         @Suppress("UNCHECKED_CAST")
         val pendingRolloverPair = params[11] as Pair<BigDecimal, RemainingBudgetStrategy?>
         val (pendingSurplusAmount, pendingSurplusStrategy) = pendingRolloverPair
+        val userSettings = params[12] as UserSettings
 
         val settingsWithRollover = settings?.copy(
             rollOverLimit = if (rolloverAmount > BigDecimal.ZERO) rolloverAmount else null,
@@ -152,7 +157,8 @@ class BudgetViewModel @Inject constructor(
                 currentPeriodStartedAtMillis = currentPeriodStartedAtMillis,
             )
             budgetStateCalculator.calculateBudgetState(
-                s, periodTransactions, LocalDate.now(), paidOccurrences, transactions
+                s, periodTransactions, LocalDate.now(), paidOccurrences, transactions,
+                reserveUpcomingCharges = userSettings.reserveUpcomingChargesEnabled,
             )
         }
 

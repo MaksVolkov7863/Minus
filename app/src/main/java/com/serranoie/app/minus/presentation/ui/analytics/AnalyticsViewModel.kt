@@ -420,6 +420,7 @@ class AnalyticsViewModel @Inject constructor(
             currentDate = today,
             paidOccurrences = paidOccurrences,
             allTransactions = allTransactions,
+            reserveUpcomingCharges = userSettings.reserveUpcomingChargesEnabled,
         )
 
         val earlyFinishActive = userSettings.earlyFinishActive

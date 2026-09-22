@@ -92,6 +92,20 @@ class NextBlockAllocationsTest {
     }
 
     @Test
+    fun `weekly - partial next week gets only its days`() {
+        // 10 day period, day 1 -> next block is days 7..9 (3 days) of 3 after this week
+        val next = computeNextBlockAllocations(
+            totalBudget = BigDecimal("1000.00"),
+            totalSpentInPeriod = BigDecimal.ZERO,
+            totalDays = 10,
+            daysRemaining = 10,
+        )
+
+        assertThat(next.weeklyAllocation).isEqualTo(BigDecimal("1000.00"))
+        assertThat(next.dailyAllocation).isEqualTo(BigDecimal("111.11"))
+    }
+
+    @Test
     fun `monthly view on a single month budget has no next month`() {
         val next = computeNextBlockAllocations(
             totalBudget = BigDecimal("900.00"),

@@ -76,15 +76,15 @@ class DynamicAllocationsTest {
     }
 
     @Test
-    fun `15 days remaining - weekly uses 3 blocks (ceiling division)`() {
-        // 15 / 7 = 2.14 -> ceil = 3 -> 5486.73 / 3 = 1828.91
+    fun `15 days remaining - weekly is seven days of the daily rate`() {
+        // 5486.73 * 7 / 15 = 2560.474 -> 2560.47
         val alloc = computeDynamicAllocations(
             totalBudget = totalBudget,
             totalSpentInPeriod = totalSpent,
             totalSpentToday = BigDecimal.ZERO,
             daysRemaining = 15,
         )
-        assertThat(alloc.weeklyAllocation).isEqualTo(BigDecimal("1828.91"))
+        assertThat(alloc.weeklyAllocation).isEqualTo(BigDecimal("2560.47"))
     }
 
     @Test
@@ -171,31 +171,84 @@ class DynamicAllocationsTest {
     @Test
     fun `today's spend exceeds daily allocation - over flag is true`() {
         // 1000 budget, 500 spent (today), 10 days remaining
-        //   remaining = 500, daily = 500/10 = 50.00
-        //   totalSpentToday = 500 > 50.00 -> over
+        //   pool at start of today = 1000, daily = 1000/10 = 100.00
+        //   totalSpentToday = 500 > 100.00 -> over
         val alloc = computeDynamicAllocations(
             totalBudget = BigDecimal("1000"),
             totalSpentInPeriod = BigDecimal("500"),
             totalSpentToday = BigDecimal("500"),
             daysRemaining = 10,
         )
-        assertThat(alloc.dailyAllocation).isEqualTo(BigDecimal("50.00"))
+        assertThat(alloc.dailyAllocation).isEqualTo(BigDecimal("100.00"))
         assertThat(alloc.isTodayOverDailyAllocation).isTrue()
     }
 
     @Test
     fun `today's spend is within daily allocation - over flag is false`() {
         // 1000 budget, 50 spent (today), 10 days remaining
-        //   remaining = 950, daily = 95.00
-        //   totalSpentToday = 50 < 95.00 -> not over
+        //   pool at start of today = 1000, daily = 100.00
+        //   totalSpentToday = 50 < 100.00 -> not over
         val alloc = computeDynamicAllocations(
             totalBudget = BigDecimal("1000"),
             totalSpentInPeriod = BigDecimal("50"),
             totalSpentToday = BigDecimal("50"),
             daysRemaining = 10,
         )
-        assertThat(alloc.dailyAllocation).isEqualTo(BigDecimal("95.00"))
+        assertThat(alloc.dailyAllocation).isEqualTo(BigDecimal("100.00"))
         assertThat(alloc.isTodayOverDailyAllocation).isFalse()
+    }
+
+    @Test
+    fun `spending exactly today's allocation is not over and keeps tomorrow's allocation unchanged`() {
+        val before = computeDynamicAllocations(
+            totalBudget = BigDecimal("1000"),
+            totalSpentInPeriod = BigDecimal.ZERO,
+            totalSpentToday = BigDecimal.ZERO,
+            daysRemaining = 10,
+        )
+        val after = computeDynamicAllocations(
+            totalBudget = BigDecimal("1000"),
+            totalSpentInPeriod = before.dailyAllocation,
+            totalSpentToday = before.dailyAllocation,
+            daysRemaining = 10,
+        )
+        assertThat(after.dailyAllocation).isEqualTo(before.dailyAllocation)
+        assertThat(after.isTodayOverDailyAllocation).isFalse()
+        assertThat(
+            computeNextBlockAllocations(
+                totalBudget = BigDecimal("1000"),
+                totalSpentInPeriod = before.dailyAllocation,
+                totalDays = 10,
+                daysRemaining = 10,
+            ).dailyAllocation
+        ).isEqualTo(before.dailyAllocation)
+    }
+
+    @Test
+    fun `mid week - the weekly allocation is fixed from the start of the week`() {
+        // 30 day period, 21 left -> 9 days elapsed, week 2 started on day 7, 23 days from its start
+        // pool at week start = 1000 - 100 + 100 = 1000 -> 1000 * 7 / 23 = 304.35
+        val alloc = computeDynamicAllocations(
+            totalBudget = BigDecimal("1000"),
+            totalSpentInPeriod = BigDecimal("100"),
+            totalSpentToday = BigDecimal.ZERO,
+            daysRemaining = 21,
+            totalDays = 30,
+            totalSpentThisWeek = BigDecimal("100"),
+        )
+        assertThat(alloc.weeklyAllocation).isEqualTo(BigDecimal("304.35"))
+    }
+
+    @Test
+    fun `weekly allocation adds back this week's spend`() {
+        val alloc = computeDynamicAllocations(
+            totalBudget = BigDecimal("1400"),
+            totalSpentInPeriod = BigDecimal("300"),
+            totalSpentToday = BigDecimal.ZERO,
+            daysRemaining = 14,
+            totalSpentThisWeek = BigDecimal("300"),
+        )
+        assertThat(alloc.weeklyAllocation).isEqualTo(BigDecimal("700.00"))
     }
 
     @Test

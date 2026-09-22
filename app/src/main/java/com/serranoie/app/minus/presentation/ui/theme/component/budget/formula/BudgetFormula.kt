@@ -4,7 +4,7 @@ import com.serranoie.app.minus.domain.model.BudgetPeriod
 import com.serranoie.app.minus.domain.model.BudgetSettings
 import com.serranoie.app.minus.domain.model.BudgetSplitMode
 import com.serranoie.app.minus.domain.model.BudgetState
-import com.serranoie.app.minus.presentation.ui.editor.sheets.split.blocksRemaining
+import com.serranoie.app.minus.presentation.ui.editor.sheets.split.blockWindow
 import com.serranoie.app.minus.presentation.ui.editor.sheets.split.toDays
 import com.serranoie.app.minus.presentation.ui.theme.component.budget.pill.calculateBudgetMetrics
 import java.math.BigDecimal
@@ -28,6 +28,7 @@ internal enum class FormulaCaption {
     REMAINING_BUDGET,
     SPREAD_OVER_LEFT,
     LEFT,
+    NEXT_BLOCK,
 }
 
 internal sealed interface FormulaTerm {
@@ -85,20 +86,45 @@ internal fun buildBudgetFormula(request: BudgetFormulaRequest): List<FormulaRow>
                 val op = if (adjustments.signum() == 1) "+" else "−"
                 add(FormulaRow(FormulaCaption.ADJUSTMENTS, amountOp(total, op, adjustments.abs()), state.totalBudget))
             }
-            val remaining = state.totalBudget.subtract(metrics.spentInPeriod)
-            add(FormulaRow(FormulaCaption.REMAINING_BUDGET, amountOp(state.totalBudget, "−", metrics.spentInPeriod), remaining))
-            val blocks = FormulaTerm.Count(blocksRemaining(state.daysRemaining, period.toDays()), period)
-            add(FormulaRow(FormulaCaption.SPREAD_OVER_LEFT, listOf(FormulaTerm.Fraction(remaining, blocks)), metrics.periodBudget))
+            val spentBeforeBlock = metrics.spentInPeriod.subtract(metrics.periodSpent)
+            val pool = state.totalBudget.subtract(spentBeforeBlock)
+            add(FormulaRow(FormulaCaption.REMAINING_BUDGET, amountOp(state.totalBudget, "−", spentBeforeBlock), pool))
+            val window = blockWindow(state.periodTotalDays, state.daysRemaining, period.toDays())
+            val terms = buildList {
+                add(FormulaTerm.Fraction(pool, FormulaTerm.Count(window.daysFromStart, BudgetPeriod.DAILY)))
+                if (window.daysInBlock > 1) {
+                    add(FormulaTerm.Op("×"))
+                    add(FormulaTerm.Count(window.daysInBlock, BudgetPeriod.DAILY))
+                }
+            }
+            add(FormulaRow(FormulaCaption.SPREAD_OVER_LEFT, terms, metrics.periodBudget))
         }
     }
 
-    add(
-        FormulaRow(
-            FormulaCaption.LEFT,
-            amountOp(metrics.periodBudget, "−", metrics.periodSpent),
-            metrics.periodBudget.subtract(metrics.periodSpent),
+    val next = metrics.nextPeriodAllocation
+    if (next == null) {
+        add(
+            FormulaRow(
+                FormulaCaption.LEFT,
+                amountOp(metrics.periodBudget, "−", metrics.periodSpent),
+                metrics.periodBudget.subtract(metrics.periodSpent),
+            )
         )
-    )
+        return@buildList
+    }
+
+    val window = blockWindow(state.periodTotalDays, state.daysRemaining, period.toDays())
+    val nextDays = minOf(period.toDays(), window.daysAfter)
+    val remaining = state.totalBudget.subtract(metrics.spentInPeriod)
+    add(FormulaRow(FormulaCaption.REMAINING_BUDGET, amountOp(state.totalBudget, "−", metrics.spentInPeriod), remaining))
+    val terms = buildList {
+        add(FormulaTerm.Fraction(remaining, FormulaTerm.Count(window.daysAfter, BudgetPeriod.DAILY)))
+        if (nextDays > 1) {
+            add(FormulaTerm.Op("×"))
+            add(FormulaTerm.Count(nextDays, BudgetPeriod.DAILY))
+        }
+    }
+    add(FormulaRow(FormulaCaption.NEXT_BLOCK, terms, next))
 }
 
 private fun amountOp(left: BigDecimal, op: String, right: BigDecimal): List<FormulaTerm> =
